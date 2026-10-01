@@ -245,7 +245,36 @@ translatable message to the user:
 - Sensitive files (e.g. identity verification documents) are never public;
   they are served only to authorized admins through short-lived signed links.
 
-## 12. Technologies
+## 12. Deployment
+
+### 12.1 Platform-independent by design
+- The project ships only standard `Dockerfile`s and a standard
+  `docker-compose.yml`. **No platform-specific configuration lives in the
+  code.**
+- The same files run unchanged on Coolify, Dokploy, Kamal, plain Docker Compose,
+  or a developer's laptop. Changing the deployment platform requires no code
+  changes.
+- All configuration comes from environment variables (see section 9).
+
+### 12.2 Starting platform: Coolify
+- **Coolify** is used to start: automatic SSL, deploy on git push, scheduled
+  Postgres backups to S3-compatible storage, and basic monitoring.
+- It costs roughly 1–2 GB of RAM, acceptable on servers with 4 GB or more.
+- On small servers (2 GB or less), plain Docker Compose with Caddy, or Kamal,
+  is used instead so all resources go to the app.
+
+### 12.3 Server layout
+- **The database runs separately from the app servers** (a dedicated server or
+  Supabase as plain Postgres), so app updates or failures never affect the
+  data and each part scales independently.
+- **Automatic daily backups** of the database, stored off-server, with
+  restores tested regularly.
+- **Zero-downtime deploys:** a new version starts and passes its health check
+  before the old one stops.
+- **Staging environment:** every change is deployed to staging before
+  production.
+
+## 13. Technologies
 
 | Area | Choice |
 |---|---|
@@ -258,7 +287,7 @@ translatable message to the user:
 | Database | PostgreSQL |
 | Realtime chat | WebSocket |
 | File storage | S3-compatible providers behind our media gateway (section 11) |
-| Deployment | Docker Compose |
+| Deployment | Docker Compose; Coolify to start (section 12) |
 
 Details of each area (server framework, database access layer, Flutter state
 management, etc.) are agreed and recorded here before that area starts.
