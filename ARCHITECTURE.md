@@ -111,13 +111,24 @@ changes or a new release.
    - The website must be **lightweight**: fast loading, small bundle, smooth on
      low-end phones.
 
-> **Risks to review before starting phase two:**
-> - Publishing on the App Store is restricted for Iranian developers due to
->   sanctions.
-> - Apple's rules usually require Apple in-app purchase for digital goods;
->   linking to external payment is allowed only in some countries.
-> - Therefore the PWA may become the main channel for iOS users. The final
->   decision is made at the start of phase two and recorded here.
+### iOS distribution and payments
+
+| Channel | Role | Payments |
+|---|---|---|
+| **PWA** (website) | Main iOS channel; works in any browser and needs no store | Website payment gateway |
+| **Iranian iOS stores** | Complementary; certificates can be revoked by Apple | Website payment gateway |
+| **App Store** | Optional, for users outside Iran; requires a legal developer account outside Iran (with legal advice) | **Apple in-app purchase** (required by Apple) |
+
+- An App Store version must offer premium items through Apple in-app purchase
+  (Guideline 3.1.3(b)). Purchases made on Android or the website are also
+  honored there, but the app never mentions or links to external purchase
+  (except where Apple allows it, e.g. US/EU).
+- An App Store version must also meet Apple's rules for dating apps: report and
+  block, content filtering, in-app account deletion, 18+ age rating, Sign in
+  with Apple if any third-party login exists, privacy labels, a demo account
+  for review, and a clear unique feature (Guideline 4.3).
+- **No feature is ever hidden from Apple's review** with feature flags
+  (Guideline 2.3.1).
 
 ## 7. Languages
 
@@ -274,7 +285,82 @@ translatable message to the user:
 - **Staging environment:** every change is deployed to staging before
   production.
 
-## 13. Technologies
+## 13. Security
+
+- **Secrets never live in code:** keys, passwords and tokens come only from
+  environment variables or a secret store; `.env` files are never committed.
+- **Passwords** are hashed with Argon2id; one-time codes expire quickly and are
+  rate-limited.
+- **Short-lived access tokens with refresh tokens,** stored per device; users
+  can see their active devices and sign out of all of them.
+- **Admin panel:** separate login, mandatory 2FA, optional IP allowlist, every
+  action in the audit log.
+- **All traffic over HTTPS;** sensitive fields (phone number, identity
+  documents) encrypted at rest.
+- **Strict input validation** on every endpoint; parameterized queries only;
+  uploaded files checked by real content type and size, with metadata (EXIF,
+  including location) stripped from photos.
+- **Authorization checked on every request:** a user can only read or change
+  what belongs to them or what they are allowed to see.
+- Dependencies are kept up to date and scanned for known vulnerabilities.
+
+## 14. User privacy
+
+- **Exact location is never shown** to other users; only an approximate
+  distance (e.g. "5 km away"). Stored location is rounded (about 100 m).
+- Users control their visibility: **hide profile, incognito mode** (seen only
+  by people they liked), hide age or distance.
+- Photos and messages are visible only to the people allowed to see them.
+- Users can **download their data** and **delete their account** from inside the
+  app; deletion actually removes the data (rule 3.4).
+- Personal data is never sold or shared with third parties; analytics use no
+  identifying data.
+
+## 15. Anti-spam and fake accounts
+
+- **Selfie verification** (verified badge) by matching a live selfie against
+  profile photos; reviewed by moderators or automatically.
+- **Bot and duplicate detection:** limits per device, phone number and IP;
+  suspicious sign-up patterns flagged to moderators.
+- **Messaging only after a match;** daily limits on likes and new chats.
+- **Automatic content filtering** of photos and messages (nudity, insults,
+  phone numbers or links in early messages), with flagged items queued for
+  moderators.
+- Every limit and filter is adjustable from the super admin panel per app.
+
+## 16. Monetization
+
+- **Free tier:** the full core experience (profile, discover, match, chat) with
+  daily limits.
+- **Premium subscription:** e.g. unlimited likes, see who liked you, advanced
+  filters, incognito, rewind.
+- **Consumables:** e.g. Super Like, Boost.
+- Plans, prices, limits and what each tier includes are **defined in the admin
+  panel**, never in code, and can differ per app.
+- **One purchase, valid everywhere:** a subscription bought on Cafe Bazaar, the
+  App Store or the website is honored on every platform.
+- Every purchase is verified server-side with its store or gateway receipt; a
+  receipt can be used only once.
+
+## 17. Code organization
+
+- **Feature-based structure:** each feature (auth, profiles, discover, matches,
+  chat, payments, media, admin, ...) has its own folder with its own files for
+  routes, logic, data access and tests. Shared code lives in one clearly named
+  shared module.
+- **One file, one responsibility;** files stay small and focused.
+- **No duplicated code:** logic needed in two places is moved into one shared
+  function, component or module and reused.
+- **No unnecessary code:** nothing is written "just in case"; unused code is
+  deleted.
+- **Comments explain why, not what:** every file starts with a short header
+  describing its purpose; non-obvious decisions, rules and limits are
+  commented. Obvious code is not commented, so comments stay accurate.
+- **Consistent naming** across server, apps and database, so any feature can be
+  found by searching its name.
+- Formatting and lint rules are enforced automatically.
+
+## 18. Technologies
 
 | Area | Choice |
 |---|---|
