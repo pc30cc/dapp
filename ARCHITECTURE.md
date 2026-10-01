@@ -165,7 +165,87 @@ designs or texts**, and can be changed at any time without rewriting code.
 > stores change with a new release; the in-app name changes from the panel
 > without a release.
 
-## 10. Technologies
+## 10. Per-app control
+
+Every client is a separate **app** in the system, and each one is controlled
+independently from the super admin panel. Initial apps:
+
+| App | Platform | Distribution |
+|---|---|---|
+| `android-bazaar` | Android | Cafe Bazaar |
+| `ios-store` | iOS | App Store / Iranian iOS stores |
+| `web-pwa` | Web | Website / PWA |
+
+New apps (e.g. another Android store) are added from the panel, not in code.
+Each request identifies its app and version, and the per-app settings are held
+in server memory (see rule 3.1), so these controls cost no database queries.
+
+### 10.1 Login and sign-up methods
+- Sign-in by **email**, by **phone number**, or both, chosen **per app**.
+- Verification method per app (one-time code by SMS or email, password).
+- SMS and email providers are swappable from the panel.
+
+### 10.2 Access switches
+Each switch is independent per app, takes effect immediately, and shows a
+translatable message to the user:
+
+| Switch | Effect |
+|---|---|
+| **Maintenance mode** | The app shows a maintenance screen; admins and test accounts can still enter. Optional planned start/end time. |
+| **Sign-up closed** | New accounts cannot be created; existing users are unaffected. |
+| **Login closed** | Nobody can sign in; already signed-in users can be kept in or signed out. |
+| **Minimum version** | Older versions are asked, or forced, to update. |
+| **Feature flags** | Any feature can be enabled or disabled per app. |
+| **Payment methods** | The payment options shown in each app. |
+
+### 10.3 Notifications and announcements
+- **Broadcast push notifications** to all users of one app, several apps or
+  all apps.
+- Targeting by app, language, platform and user segment
+  (e.g. premium, inactive for 30 days).
+- Scheduled sending, in Persian and English, with delivery reports.
+- In-app announcements (banner or popup) per app.
+- Sending runs as a background job in batches, never as one large burst (rule
+  3.3).
+
+## 11. File storage
+
+### 11.1 One permanent address per file
+- Every file (e.g. a profile photo) has **one permanent public path** on our
+  own domain, for example `/media/<file-id>`. This path **never changes**,
+  whatever provider stores the file.
+- The database stores only the file id, never a provider URL (see section 9).
+- A file is never modified in place: a new photo gets a new id. This lets
+  apps, browsers and CDNs cache files forever without ever showing stale
+  images.
+- Image sizes (thumbnail, card, full) are generated once at upload and served
+  from the same permanent path with a size parameter.
+
+### 11.2 Storage providers are swappable
+- Storage sits behind a single internal interface; any S3-compatible service
+  (MinIO, Arvan, AWS, etc.) or local disk can be a provider.
+- The **media gateway** (our server) resolves the permanent path to whichever
+  provider currently holds the file. Apps and the website never know or depend
+  on the provider.
+- Changing the primary provider is a setting change in the panel, with **no
+  downtime and no broken images**.
+
+### 11.3 Automatic sync across providers
+- A file uploaded to the primary provider is **copied to every other active
+  provider automatically** in the background.
+- Each copy is verified by checksum, failed copies are retried, and the panel
+  shows the sync status of every provider.
+- If a provider is unreachable, the gateway serves the file from another
+  provider that has it.
+- Deletions (e.g. account deletion) are propagated to all providers.
+- Adding a new provider starts a backfill of all existing files; it can be
+  promoted to primary once fully synced.
+
+### 11.4 Private files
+- Sensitive files (e.g. identity verification documents) are never public;
+  they are served only to authorized admins through short-lived signed links.
+
+## 12. Technologies
 
 | Area | Choice |
 |---|---|
@@ -177,7 +257,7 @@ designs or texts**, and can be changed at any time without rewriting code.
 | Server | Node.js + TypeScript |
 | Database | PostgreSQL |
 | Realtime chat | WebSocket |
-| Photo storage | S3-compatible (MinIO) |
+| File storage | S3-compatible providers behind our media gateway (section 11) |
 | Deployment | Docker Compose |
 
 Details of each area (server framework, database access layer, Flutter state
