@@ -1,120 +1,136 @@
-# dapp — اصول پایه
+# Architecture principles
 
-این سند مرجع ثابت پروژه است. هر تصمیم فنی باید با این اصول سازگار باشد؛
-تغییر هر اصل فقط با توافق و به‌روزرسانی همین فایل.
+This document is the project's fixed reference. Every technical decision must
+be consistent with these principles. A principle changes only by agreement and
+by updating this file.
 
-## ۱. دیتابیس: فقط PostgreSQL
+## 1. Database: PostgreSQL only
 
-- تنها دیتابیس پروژه **PostgreSQL** است (MySQL پشتیبانی نمی‌شود).
-- Supabase فقط به‌عنوان یک Postgres معمولی استفاده می‌شود. از Auth، Storage،
-  Realtime و RLS خود Supabase استفاده **نمی‌کنیم**؛ همه‌ی این‌ها در سرور خودمان است.
-- اتصال فقط از طریق یک متغیر `DATABASE_URL`. جابه‌جایی بین Supabase، سرور شخصی
-  یا هر سرویس Postgres دیگر فقط با `pg_dump` / `pg_restore` و عوض کردن همین آدرس
-  انجام می‌شود، بدون تغییر در کد.
-- فقط از امکاناتی استفاده می‌کنیم که در Postgres استاندارد (و extensionهای رایج مثل
-  PostGIS و pgvector) هست، نه امکانات اختصاصی یک سرویس‌دهنده.
+- **PostgreSQL** is the only database (MySQL is not supported).
+- Supabase is used only as a plain Postgres host. We do **not** use Supabase
+  Auth, Storage, Realtime or RLS; all of that lives in our own server.
+- The connection is configured by a single `DATABASE_URL`. Moving between
+  Supabase, a self-hosted server or any other Postgres provider is done with
+  `pg_dump` / `pg_restore` and changing that URL, with no code changes.
+- Only features of standard Postgres (and common extensions such as PostGIS and
+  pgvector) are used, never provider-specific features.
 
-## ۲. سبک بودن: کمترین فشار روی دیتابیس، رم و CPU
+## 2. Lightweight: minimal load on database, RAM and CPU
 
-- برای هر کوئری پرتکرار index مناسب تعریف می‌شود.
-- همه‌ی لیست‌ها صفحه‌بندی دارند؛ هیچ لیستی کامل برگردانده نمی‌شود.
-- فایل‌ها (عکس‌ها) خارج از دیتابیس نگهداری می‌شوند؛ دیتابیس فقط مسیر فایل را دارد.
-- رویدادهای آنی (چت، Match) با WebSocket فرستاده می‌شوند، نه polling.
-- connection pool کوچک و قابل تنظیم.
-- لایه‌ی کش (مثل Redis) فقط وقتی اضافه می‌شود که اندازه‌گیری نیاز به آن را نشان دهد.
+- Every frequent query has a suitable index.
+- Every list is paginated; no endpoint returns an unbounded list.
+- Files (photos) are stored outside the database; the database keeps only the
+  file reference.
+- Realtime events (chat, matches) are pushed over WebSocket, never polled.
+- Small, configurable connection pool.
+- A cache layer (e.g. Redis) is added only when measurements show it is needed.
 
-## ۳. همه‌چیز سلف‌هاست
+## 3. Everything self-hosted
 
-- سرور API، ذخیره‌ی فایل و دیتابیس روی زیرساخت خودمان قابل اجراست.
-- کل سیستم با `docker compose` بالا می‌آید.
+- The API server, file storage and database all run on our own infrastructure.
+- The whole system starts with `docker compose`.
 
-## ۴. سوپر ادمین حرفه‌ای
+## 4. Professional super admin
 
-پنل مدیریت تحت وب و جدا از اپ کاربران است. هر جزئیاتی از سیستم که قابل تنظیم
-است باید از این پنل قابل کنترل باشد، بدون نیاز به تغییر کد یا انتشار نسخه‌ی جدید.
+The admin panel is a web app, separate from the user apps. Every configurable
+detail of the system must be controllable from this panel, without code
+changes or a new release.
 
-- **نقش‌ها و دسترسی‌ها:** سوپر ادمین، و نقش‌های محدودتر (مثلاً ناظر محتوا، پشتیبانی،
-  مالی) با دسترسی‌های قابل تعریف.
-- **کاربران:** جستجو، مشاهده‌ی کامل پروفایل، ویرایش، تعلیق، مسدودسازی و حذف.
-- **نظارت محتوا:** بررسی گزارش‌ها، تأیید یا رد عکس‌ها و پروفایل‌ها، رسیدگی به تخلف‌ها.
-- **مالی:** مدیریت پلن‌ها و قیمت‌ها، مشاهده‌ی تراکنش‌ها، بازگشت وجه، کد تخفیف.
-- **تنظیمات اپ از راه دور:** روشن و خاموش کردن امکانات (feature flag)، محدودیت‌ها
-  (مثل تعداد لایک روزانه)، اجبار به به‌روزرسانی، پیام‌ها و اعلان‌های سراسری.
-- **متن‌ها و ترجمه‌ها:** ویرایش متن‌های فارسی و انگلیسی اپ از پنل.
-- **آمار و گزارش:** کاربران فعال، ثبت‌نام، Match، درآمد.
-- **ثبت رویدادها (audit log):** هر کاری که ادمین‌ها انجام می‌دهند ثبت و قابل پیگیری است.
-- **امنیت پنل:** ورود دومرحله‌ای (2FA) برای همه‌ی ادمین‌ها.
+- **Roles and permissions:** super admin plus narrower roles (e.g. content
+  moderator, support, finance) with definable permissions.
+- **Users:** search, full profile view, edit, suspend, ban, delete.
+- **Content moderation:** review reports, approve or reject photos and
+  profiles, handle violations.
+- **Finance:** manage plans and prices, view transactions, refunds, discount
+  codes.
+- **Remote app configuration:** feature flags, limits (e.g. daily likes),
+  forced updates, global messages and announcements.
+- **Texts and translations:** edit the app's Persian and English strings from
+  the panel.
+- **Analytics and reports:** active users, sign-ups, matches, revenue.
+- **Audit log:** every admin action is recorded and traceable.
+- **Panel security:** two-factor authentication (2FA) for all admins.
 
-## ۵. پلتفرم‌ها و ترتیب انتشار
+## 5. Platforms and release order
 
-1. **مرحله‌ی اول: اپ اندروید** (Flutter)، انتشار در **کافه بازار**.
-   - پرداخت درون‌برنامه‌ای از طریق درگاه کافه بازار (SDK رسمی Poolakey).
-2. **مرحله‌ی دوم: iOS.**
-   - پرداخت‌ها برای کاربران iOS از طریق **سایت** انجام می‌شود، نه داخل اپ.
-   - سایت یک **PWA حرفه‌ای** است که ظاهر و حس آن مثل اپ iOS باشد
-     (نصب روی صفحه‌ی اصلی، تمام‌صفحه، انیمیشن‌ها و ناوبری مشابه iOS).
-   - سایت باید **سبک** باشد: بارگذاری سریع، حجم کم، کارکرد روان روی گوشی‌های ضعیف.
+1. **Phase one: Android app** (Flutter), published on **Cafe Bazaar**.
+   - In-app purchases through Cafe Bazaar's billing (official Poolakey SDK).
+2. **Phase two: iOS.**
+   - Payments for iOS users are made on the **website**, not inside the app.
+   - The website is a **professional PWA** that looks and feels like an iOS
+     app (installable to the home screen, full screen, iOS-like animations and
+     navigation).
+   - The website must be **lightweight**: fast loading, small bundle, smooth on
+     low-end phones.
 
-> **ریسک‌هایی که پیش از شروع مرحله‌ی دوم باید بررسی شوند:**
-> - انتشار در App Store برای توسعه‌دهنده‌ی ایرانی به‌خاطر تحریم‌ها محدودیت دارد.
-> - قوانین اپل برای خرید محتوای دیجیتال معمولاً پرداخت درون‌برنامه‌ای اپل را الزامی
->   می‌کند و ارجاع به پرداخت بیرون از اپ فقط در بعضی کشورها مجاز است.
-> - به همین دلیل ممکن است راه اصلی کاربران iOS همین PWA باشد. تصمیم نهایی در شروع
->   مرحله‌ی دوم گرفته و اینجا ثبت می‌شود.
+> **Risks to review before starting phase two:**
+> - Publishing on the App Store is restricted for Iranian developers due to
+>   sanctions.
+> - Apple's rules usually require Apple in-app purchase for digital goods;
+>   linking to external payment is allowed only in some countries.
+> - Therefore the PWA may become the main channel for iOS users. The final
+>   decision is made at the start of phase two and recorded here.
 
-## ۶. زبان‌ها
+## 6. Languages
 
-- اپ‌ها، سایت و پنل ادمین به **فارسی (راست‌به‌چپ) و انگلیسی (چپ‌به‌راست)** هستند.
-- کاربر هر لحظه می‌تواند زبان را عوض کند و تغییر فوراً و بدون راه‌اندازی مجدد اعمال شود.
-- هیچ متنی مستقیم در کد نوشته نمی‌شود؛ همه‌ی متن‌ها از فایل‌ها یا پنل ترجمه می‌آیند.
+- The apps, website and admin panel are in **Persian (RTL) and English (LTR)**.
+- Users can switch language at any moment; the change applies instantly,
+  without restarting.
+- No user-facing text is hardcoded; all strings come from translation files or
+  the translation panel.
 
-## ۷. طراحی رابط کاربری
+## 7. UI design
 
-- رابط کاربری همه‌ی اپ‌ها بر پایه‌ی **بهترین و زیباترین UIهای متن‌باز موجود در
-  GitHub** ساخته می‌شود (کیت‌ها، کامپوننت‌ها و نمونه‌های شناخته‌شده و پرستاره).
-- پیش از استفاده از هر منبع، **لایسنس آن بررسی می‌شود** تا استفاده‌ی تجاری مجاز باشد.
-- یک سیستم طراحی (design system) واحد برای رنگ، فونت، فاصله‌ها و کامپوننت‌ها
-  تعریف می‌شود تا اپ اندروید، PWA و پنل ادمین یکدست باشند.
-- پشتیبانی کامل از حالت روشن و تاریک، و راست‌به‌چپ.
+- The UI of every app is built on **the best and most beautiful open-source UIs
+  available on GitHub** (well-known, highly starred kits, components and
+  examples).
+- **The license of every source is checked** before use, to make sure
+  commercial use is allowed.
+- A single design system (colors, typography, spacing, components) keeps the
+  Android app, the PWA and the admin panel consistent.
+- Full support for light and dark mode, and for RTL.
 
-## ۸. نام و دامنه‌ی اپ هیچ‌جا ثابت نیست
+## 8. App name and domains are never hardcoded
 
-نام اپ (برند) و دامنه‌ها **در هیچ‌جای کد، طراحی یا متن‌ها مستقیم نوشته نمی‌شوند** و
-هر زمان باید بتوان آن‌ها را بدون بازنویسی کد عوض کرد.
+The app's name (brand) and domains are **never written directly in code,
+designs or texts**, and can be changed at any time without rewriting code.
 
-- **یک منبع واحد برند:** نام فارسی و انگلیسی، لوگو، آیکون، رنگ‌های اصلی، ایمیل و
-  لینک‌های پشتیبانی، و همه‌ی دامنه‌ها در یک تنظیمات مرکزی تعریف می‌شوند و از پنل
-  سوپر ادمین قابل ویرایش‌اند.
-- **متن‌ها:** نام اپ در ترجمه‌ها به‌صورت متغیر (مثلاً `{appName}`) می‌آید، نه به‌صورت
-  متن ثابت.
-- **دامنه‌ها:** آدرس API، سایت/PWA، پنل ادمین و فایل‌ها از تنظیمات و متغیرهای محیطی
-  خوانده می‌شوند. اپ‌های نصب‌شده فهرستی از دامنه‌های جایگزین دارند و آدرس فعلی را
-  از سرور می‌گیرند، تا با عوض شدن دامنه از کار نیفتند.
-- **لینک‌های اشتراک‌گذاری، ایمیل‌ها و اعلان‌ها** همیشه با نام و دامنه‌ی فعلی ساخته
-  می‌شوند.
-- **دیتابیس:** نام یا دامنه در داده‌ها ذخیره نمی‌شود؛ مثلاً برای عکس‌ها فقط نام فایل
-  نگه داشته می‌شود و آدرس کامل هنگام پاسخ ساخته می‌شود.
-- **شناسه‌های فنی خنثی:** نام پوشه‌ها، سرویس‌ها و جدول‌ها به برند وابسته نیستند.
+- **Single brand source:** Persian and English names, logo, icon, primary
+  colors, support email and links, and all domains are defined in one central
+  configuration, editable from the super admin panel.
+- **Texts:** the app name appears in translations as a variable (e.g.
+  `{appName}`), never as fixed text.
+- **Domains:** the API, website/PWA, admin panel and file URLs are read from
+  configuration and environment variables. Installed apps carry a list of
+  fallback domains and fetch the current address from the server, so they keep
+  working when a domain changes.
+- **Share links, emails and notifications** are always built with the current
+  name and domain.
+- **Database:** no name or domain is stored in data; e.g. for photos only the
+  file name is stored and the full URL is built at response time.
+- **Neutral technical identifiers:** folder, service and table names are not
+  tied to the brand.
 
-> **استثنای مارکت‌ها:** شناسه‌ی بسته‌ی اندروید (package name) در کافه بازار و
-> Bundle ID در App Store بعد از اولین انتشار **قابل تغییر نیستند**. برای همین یک
-> شناسه‌ی خنثی و بی‌ارتباط با برند انتخاب می‌شود. نام نمایشی و آیکون در مارکت‌ها با
-> انتشار نسخه‌ی جدید قابل تغییرند؛ نام داخل اپ بدون انتشار نسخه و از پنل عوض می‌شود.
+> **Store exception:** the Android package name on Cafe Bazaar and the Bundle
+> ID on the App Store **cannot be changed** after the first release. A neutral
+> identifier unrelated to the brand is chosen. The display name and icon in the
+> stores change with a new release; the in-app name changes from the panel
+> without a release.
 
-## ۹. تکنولوژی‌ها
+## 9. Technologies
 
-| بخش | انتخاب |
+| Area | Choice |
 |---|---|
-| اپ اندروید (و بعداً iOS) | Flutter (Dart 3) |
-| سایت / PWA | سبک؛ فریم‌ورک پیش از شروع مرحله‌ی دوم قطعی می‌شود |
-| پنل سوپر ادمین | وب؛ فریم‌ورک پیش از شروع قطعی می‌شود |
-| پرداخت اندروید | درگاه کافه بازار (Poolakey) |
-| پرداخت iOS / سایت | درگاه پرداخت از طریق سایت |
-| سرور | Node.js + TypeScript |
-| دیتابیس | PostgreSQL |
-| چت آنی | WebSocket |
-| ذخیره‌ی عکس | سازگار با S3 (MinIO) |
-| اجرا | Docker Compose |
+| Android app (later iOS) | Flutter (Dart 3) |
+| Website / PWA | Lightweight; framework decided before phase two |
+| Super admin panel | Web; framework decided before it starts |
+| Android payments | Cafe Bazaar billing (Poolakey) |
+| iOS / website payments | Payment gateway via the website |
+| Server | Node.js + TypeScript |
+| Database | PostgreSQL |
+| Realtime chat | WebSocket |
+| Photo storage | S3-compatible (MinIO) |
+| Deployment | Docker Compose |
 
-جزئیات هر بخش (فریم‌ورک سرور، لایه‌ی دسترسی به دیتابیس، مدیریت state در Flutter و ...)
-پیش از شروع همان بخش با هم قطعی و اینجا ثبت می‌شود.
+Details of each area (server framework, database access layer, Flutter state
+management, etc.) are agreed and recorded here before that area starts.
