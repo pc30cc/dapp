@@ -25,12 +25,60 @@ by updating this file.
 - Small, configurable connection pool.
 - A cache layer (e.g. Redis) is added only when measurements show it is needed.
 
-## 3. Everything self-hosted
+## 3. Database load rules (mandatory)
+
+Keeping the database light is a top priority. Every piece of code is checked
+against these rules before it is merged.
+
+### 3.1 Avoid unnecessary queries
+- **Settings, translations, plans and brand config are cached in server
+  memory** and reloaded only when an admin changes them. They never cost a
+  query per request.
+- **Authentication without the database:** the user's identity comes from the
+  JWT; no "who is this user" query per request.
+- **No polling:** messages and matches are pushed over WebSocket.
+- **Photos are served directly from disk / MinIO** with long-lived browser
+  caching; the database is not involved.
+- **Admin analytics** read from hourly/daily summary tables, never by counting
+  whole tables each time the panel opens.
+
+### 3.2 Every query does the minimum work
+- **No N+1 queries:** related data for a list is fetched in one query (e.g. all
+  photos for 20 profiles at once).
+- **Only needed columns are selected;** `SELECT *` is not allowed.
+- **Every query is backed by an index** and checked with `EXPLAIN` before
+  merging.
+- **Cursor (keyset) pagination** instead of `OFFSET`.
+- **Counters are stored, not recomputed:** e.g. today's like count is kept in a
+  column or in memory, not computed with `COUNT` on each request.
+
+### 3.3 Prevent load spikes
+- **Per-user rate limits,** so no single user or bot can overload the database.
+- **Discover cards are fetched in batches** (e.g. 20 at a time) and kept by the
+  app; no discovery query per swipe.
+- **Heavy work runs in the background:** notifications, image processing and
+  cleanup run outside the request path, cleanup during low-traffic hours.
+- **Small connection pool** (e.g. 5–10 connections).
+- **Query time cap** (`statement_timeout`, e.g. 2 seconds).
+
+### 3.4 Data does not grow unchecked
+- Old "pass" swipes are deleted after a set period.
+- Large tables (swipes, messages) are partitioned by time.
+- Data of deleted accounts is actually removed.
+- Logs and raw analytics are not kept in the main database.
+
+### 3.5 Continuous measurement
+- `pg_stat_statements` is enabled so the slowest and most frequent queries are
+  always visible.
+- Each endpoint has a maximum query count (e.g. 3), enforced in tests.
+- Queries slower than a set threshold are logged automatically.
+
+## 4. Everything self-hosted
 
 - The API server, file storage and database all run on our own infrastructure.
 - The whole system starts with `docker compose`.
 
-## 4. Professional super admin
+## 5. Professional super admin
 
 The admin panel is a web app, separate from the user apps. Every configurable
 detail of the system must be controllable from this panel, without code
@@ -51,7 +99,7 @@ changes or a new release.
 - **Audit log:** every admin action is recorded and traceable.
 - **Panel security:** two-factor authentication (2FA) for all admins.
 
-## 5. Platforms and release order
+## 6. Platforms and release order
 
 1. **Phase one: Android app** (Flutter), published on **Cafe Bazaar**.
    - In-app purchases through Cafe Bazaar's billing (official Poolakey SDK).
@@ -71,7 +119,7 @@ changes or a new release.
 > - Therefore the PWA may become the main channel for iOS users. The final
 >   decision is made at the start of phase two and recorded here.
 
-## 6. Languages
+## 7. Languages
 
 - The apps, website and admin panel are in **Persian (RTL) and English (LTR)**.
 - Users can switch language at any moment; the change applies instantly,
@@ -79,7 +127,7 @@ changes or a new release.
 - No user-facing text is hardcoded; all strings come from translation files or
   the translation panel.
 
-## 7. UI design
+## 8. UI design
 
 - The UI of every app is built on **the best and most beautiful open-source UIs
   available on GitHub** (well-known, highly starred kits, components and
@@ -90,7 +138,7 @@ changes or a new release.
   Android app, the PWA and the admin panel consistent.
 - Full support for light and dark mode, and for RTL.
 
-## 8. App name and domains are never hardcoded
+## 9. App name and domains are never hardcoded
 
 The app's name (brand) and domains are **never written directly in code,
 designs or texts**, and can be changed at any time without rewriting code.
@@ -117,7 +165,7 @@ designs or texts**, and can be changed at any time without rewriting code.
 > stores change with a new release; the in-app name changes from the panel
 > without a release.
 
-## 9. Technologies
+## 10. Technologies
 
 | Area | Choice |
 |---|---|
