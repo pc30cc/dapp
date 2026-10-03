@@ -318,8 +318,8 @@ translatable message to the user:
 
 ## 15. Anti-spam and fake accounts
 
-- **Selfie verification** (verified badge) by matching a live selfie against
-  profile photos; reviewed by moderators or automatically.
+- **Video selfie verification** (verified badge), reviewed **manually** by
+  moderators in the admin panel; see section 16.
 - **Bot and duplicate detection:** limits per device, phone number and IP;
   suspicious sign-up patterns flagged to moderators.
 - **Messaging only after a match;** daily limits on likes and new chats.
@@ -328,7 +328,40 @@ translatable message to the user:
   moderators.
 - Every limit and filter is adjustable from the super admin panel per app.
 
-## 16. Monetization
+## 16. Account verification (manual)
+
+Verification is done **only by human moderators in the admin panel**. No AI or
+automatic face/gender models are used.
+
+### 16.1 User flow
+1. The app shows a **random challenge** (e.g. a gesture plus a short code
+   shown on screen) so a pre-recorded video cannot be reused.
+2. The user records a **short selfie video** (a few seconds) performing the
+   challenge.
+3. The request enters the verification queue; the user sees "under review".
+4. The user is notified of the result; if rejected, the reason is shown and
+   they can try again.
+
+### 16.2 Moderator review in the admin panel
+- A queue showing the video side by side with the **profile photos**, the
+  **declared gender and age**, and the **challenge that was requested**.
+- The moderator checks that the person is real, performed the challenge, is
+  the same person as in the photos, and that the declared gender matches.
+- **Approve** (verified badge) or **reject** with a predefined reason; every
+  decision is recorded in the audit log.
+- Queue filters and priority (e.g. oldest first, reported accounts first).
+
+### 16.3 Rules
+- Whether verification is **required** before discovering / being discovered,
+  or optional, is a setting **per app** in the panel.
+- Changing profile photos after verification sends the account for
+  **re-verification** (configurable).
+- The video is a **private file** (section 11.4): visible only to authorized
+  moderators via short-lived links, and **deleted after the decision**; only
+  the result, moderator and date are kept.
+- Repeated rejected attempts are rate-limited and flagged.
+
+## 17. Monetization
 
 - **Free tier:** the full core experience (profile, discover, match, chat) with
   daily limits.
@@ -342,7 +375,7 @@ translatable message to the user:
 - Every purchase is verified server-side with its store or gateway receipt; a
   receipt can be used only once.
 
-## 17. Code organization
+## 18. Code organization
 
 - **Feature-based structure:** each feature (auth, profiles, discover, matches,
   chat, payments, media, admin, ...) has its own folder with its own files for
@@ -360,7 +393,7 @@ translatable message to the user:
   found by searching its name.
 - Formatting and lint rules are enforced automatically.
 
-## 18. Technologies
+## 19. Technologies
 
 | Area | Choice |
 |---|---|
