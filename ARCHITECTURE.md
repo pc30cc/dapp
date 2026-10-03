@@ -354,12 +354,8 @@ automatic face/gender models are used.
 ### 16.3 Rules
 - Whether verification is **required** before discovering / being discovered,
   or optional, is a setting **per app** in the panel.
-- Changing profile photos after verification sends the account for
-  **re-verification** (configurable).
-- The video is a **private file** (section 11.4): visible only to authorized
-  moderators via short-lived links, and **deleted after the decision**; only
-  the result, moderator and date are kept.
-- Repeated rejected attempts are rate-limited and flagged.
+- The video is a **private file** (section 11.4), visible only to authorized
+  moderators via short-lived links.
 
 ## 17. Monetization
 
